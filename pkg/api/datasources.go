@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/grafana/pkg/bus"
 	m "github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/plugins"
+	"github.com/grafana/grafana/pkg/plugins/backendplugin"
 	"github.com/grafana/grafana/pkg/util"
 )
 
@@ -251,6 +252,46 @@ func GetDataSourceIdByName(c *m.ReqContext) Response {
 	}
 
 	return JSON(200, &dtos)
+}
+
+// /api/datasources/:id/resources/*
+func (hs *HTTPServer) CallDatasourceResource(c *m.ReqContext) {
+	datasourceID := c.ParamsInt64(":id")
+	ds, err := hs.DatasourceCache.GetDatasource(datasourceID, c.SignedInUser, c.SkipCache)
+	if err != nil {
+		if err == m.ErrDataSourceAccessDenied {
+			c.JsonApiErr(403, "Access denied to datasource", err)
+			return
+		}
+		c.JsonApiErr(500, "Unable to load datasource meta data", err)
+		return
+	}
+
+	// find plugin
+	plugin, ok := plugins.DataSources[ds.Type]
+	if !ok {
+		c.JsonApiErr(500, "Unable to find datasource plugin", err)
+		return
+	}
+
+	config := backendplugin.PluginConfig{
+		OrgID:                   c.OrgId,
+		PluginID:                plugin.Id,
+		PluginType:              plugin.Type,
+		JSONData:                ds.JsonData,
+		DecryptedSecureJSONData: ds.DecryptedValues(),
+		Updated:                 ds.Updated,
+		DataSourceConfig: &backendplugin.DataSourceConfig{
+			ID:               ds.Id,
+			Name:             ds.Name,
+			URL:              ds.Url,
+			Database:         ds.Database,
+			User:             ds.User,
+			BasicAuthEnabled: ds.BasicAuth,
+			BasicAuthUser:    ds.BasicAuthUser,
+		},
+	}
+	hs.BackendPluginManager.CallResource(config, c, c.Params("*"))
 }
 
 func convertModelToDtos(ds *m.DataSource) dtos.DataSource {

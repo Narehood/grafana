@@ -1,4 +1,4 @@
-/* tslint:disable:max-line-length */
+/* eslint-disable max-len */
 
 import { GrafanaThemeCommons } from '@grafana/data';
 import { renderGeneratedFileBanner } from '../utils/generatedFileBanner';
@@ -106,7 +106,7 @@ $font-size-md: ${theme.typography.size.md} !default;
 $font-size-sm: ${theme.typography.size.sm} !default;
 $font-size-xs: ${theme.typography.size.xs} !default;
 
-$line-height-base: ${theme.typography.lineHeight.lg} !default;
+$line-height-base: ${theme.typography.lineHeight.md} !default;
 
 $font-weight-regular: ${theme.typography.weight.regular} !default;
 $font-weight-semi-bold: ${theme.typography.weight.semibold} !default;
@@ -217,6 +217,11 @@ $external-services: (
   google: (
     bgColor: #e84d3c,
     borderColor: #b83e31,
+    icon: '',
+  ),
+  azuread: (
+    bgColor: #2f2f2f,
+    borderColor: #2f2f2f,
     icon: '',
   ),
   grafanacom: (

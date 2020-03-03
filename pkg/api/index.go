@@ -43,7 +43,7 @@ func (hs *HTTPServer) setIndexViewData(c *m.ReqContext) (*dtos.IndexViewData, er
 	appSubURL := setting.AppSubUrl
 
 	// special case when doing localhost call from phantomjs
-	if c.IsRenderCall {
+	if c.IsRenderCall && !hs.Cfg.ServeFromSubPath {
 		appURL = fmt.Sprintf("%s://localhost:%s", setting.Protocol, setting.HttpPort)
 		appSubURL = ""
 		settings["appSubUrl"] = ""
@@ -85,6 +85,9 @@ func (hs *HTTPServer) setIndexViewData(c *m.ReqContext) (*dtos.IndexViewData, er
 		NewGrafanaVersionExists: plugins.GrafanaHasUpdate,
 		AppName:                 setting.ApplicationName,
 		AppNameBodyClass:        getAppNameBodyClass(hs.License.HasValidLicense()),
+		FavIcon:                 "public/img/fav32.png",
+		AppleTouchIcon:          "public/img/apple-touch-icon.png",
+		AppTitle:                "Grafana",
 	}
 
 	if setting.DisableGravatar {
@@ -227,9 +230,20 @@ func (hs *HTTPServer) setIndexViewData(c *m.ReqContext) (*dtos.IndexViewData, er
 				}
 
 				if include.Type == "page" && include.AddToNav {
-					link := &dtos.NavLink{
-						Url:  setting.AppSubUrl + "/plugins/" + plugin.Id + "/page/" + include.Slug,
-						Text: include.Name,
+					var link *dtos.NavLink
+					if len(include.Path) > 0 {
+						link = &dtos.NavLink{
+							Url:  setting.AppSubUrl + include.Path,
+							Text: include.Name,
+						}
+						if include.DefaultNav {
+							appLink.Url = link.Url // Overwrite the hardcoded page logic
+						}
+					} else {
+						link = &dtos.NavLink{
+							Url:  setting.AppSubUrl + "/plugins/" + plugin.Id + "/page/" + include.Slug,
+							Text: include.Name,
+						}
 					}
 					appLink.Children = append(appLink.Children, link)
 				}
@@ -273,7 +287,7 @@ func (hs *HTTPServer) setIndexViewData(c *m.ReqContext) (*dtos.IndexViewData, er
 		})
 	}
 
-	if c.OrgRole == m.ROLE_ADMIN || hs.Cfg.EditorsCanAdmin {
+	if c.OrgRole == m.ROLE_ADMIN || (hs.Cfg.EditorsCanAdmin && c.OrgRole == m.ROLE_EDITOR) {
 		configNodes = append(configNodes, &dtos.NavLink{
 			Text:        "Teams",
 			Id:          "teams",
@@ -352,14 +366,10 @@ func (hs *HTTPServer) setIndexViewData(c *m.ReqContext) (*dtos.IndexViewData, er
 		Icon:         "gicon gicon-question",
 		HideFromMenu: true,
 		SortWeight:   dtos.WeightHelp,
-		Children: []*dtos.NavLink{
-			{Text: "Keyboard shortcuts", Url: "/shortcuts", Icon: "fa fa-fw fa-keyboard-o", Target: "_self"},
-			{Text: "Community site", Url: "http://community.grafana.com", Icon: "fa fa-fw fa-comment", Target: "_blank"},
-			{Text: "Documentation", Url: "http://docs.grafana.org", Icon: "fa fa-fw fa-file", Target: "_blank"},
-		},
+		Children:     []*dtos.NavLink{},
 	})
 
-	hs.HooksService.RunIndexDataHooks(&data)
+	hs.HooksService.RunIndexDataHooks(&data, c)
 
 	sort.SliceStable(data.NavTree, func(i, j int) bool {
 		return data.NavTree[i].SortWeight < data.NavTree[j].SortWeight

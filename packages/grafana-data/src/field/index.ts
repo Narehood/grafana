@@ -1,4 +1,6 @@
 export * from './fieldDisplay';
 export * from './displayProcessor';
+export * from './scale';
+export * from './standardFieldConfigEditorRegistry';
 
-export { applyFieldOverrides } from './fieldOverrides';
+export { applyFieldOverrides, validateFieldConfig } from './fieldOverrides';
