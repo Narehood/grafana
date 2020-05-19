@@ -8,7 +8,7 @@ import (
 
 	"github.com/grafana/grafana/pkg/bus"
 	"github.com/grafana/grafana/pkg/infra/log"
-	m "github.com/grafana/grafana/pkg/models"
+	"github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/plugins"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/util"
@@ -23,7 +23,7 @@ type templateData struct {
 func getHeaders(route *plugins.AppPluginRoute, orgId int64, appID string) (http.Header, error) {
 	result := http.Header{}
 
-	query := m.GetPluginSettingByIdQuery{OrgId: orgId, PluginId: appID}
+	query := models.GetPluginSettingByIdQuery{OrgId: orgId, PluginId: appID}
 
 	if err := bus.Dispatch(&query); err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func getHeaders(route *plugins.AppPluginRoute, orgId int64, appID string) (http.
 }
 
 func updateURL(route *plugins.AppPluginRoute, orgId int64, appID string) (string, error) {
-	query := m.GetPluginSettingByIdQuery{OrgId: orgId, PluginId: appID}
+	query := models.GetPluginSettingByIdQuery{OrgId: orgId, PluginId: appID}
 	if err := bus.Dispatch(&query); err != nil {
 		return "", err
 	}
@@ -48,7 +48,7 @@ func updateURL(route *plugins.AppPluginRoute, orgId int64, appID string) (string
 		JsonData:       query.Result.JsonData,
 		SecureJsonData: query.Result.SecureJsonData.Decrypt(),
 	}
-	interpolated, err := InterpolateString(route.Url, data)
+	interpolated, err := InterpolateString(route.URL, data)
 	if err != nil {
 		return "", err
 	}
@@ -56,8 +56,8 @@ func updateURL(route *plugins.AppPluginRoute, orgId int64, appID string) (string
 }
 
 // NewApiPluginProxy create a plugin proxy
-func NewApiPluginProxy(ctx *m.ReqContext, proxyPath string, route *plugins.AppPluginRoute, appID string, cfg *setting.Cfg) *httputil.ReverseProxy {
-	targetURL, _ := url.Parse(route.Url)
+func NewApiPluginProxy(ctx *models.ReqContext, proxyPath string, route *plugins.AppPluginRoute, appID string, cfg *setting.Cfg) *httputil.ReverseProxy {
+	targetURL, _ := url.Parse(route.URL)
 
 	director := func(req *http.Request) {
 
@@ -98,7 +98,7 @@ func NewApiPluginProxy(ctx *m.ReqContext, proxyPath string, route *plugins.AppPl
 			}
 		}
 
-		if len(route.Url) > 0 {
+		if len(route.URL) > 0 {
 			interpolatedURL, err := updateURL(route, ctx.OrgId, appID)
 			if err != nil {
 				ctx.JsonApiErr(500, "Could not interpolate plugin route url", err)
